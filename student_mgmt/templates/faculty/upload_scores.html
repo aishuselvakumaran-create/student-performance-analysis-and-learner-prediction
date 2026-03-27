@@ -1,0 +1,145 @@
+{% extends 'faculty/base_faculty.html' %}
+{% load custom_filters %}
+{% block title %}Upload Scores – EduTrack{% endblock %}
+{% block page_title %}Upload Scores{% endblock %}
+{% block extra_style %}
+<style>
+.score-table input[type=number]{width:80px;padding:6px 8px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:13px;text-align:center;font-family:inherit;}
+.score-table input[type=number]:focus{outline:none;border-color:#6C63FF;box-shadow:0 0 0 3px rgba(108,99,255,.1);}
+.score-table th,.score-table td{padding:10px 12px!important;}
+.badge-existing{background:#d1fae5;color:#065f46;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;margin-left:6px;}
+.row-existing td { background: #f8fffe; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Upload Scores</h1><p>{{ faculty.department }} Department</p></div>
+</div>
+
+<!-- Filter Bar -->
+<div class="card" style="margin-bottom:20px">
+  <form method="GET" class="search-bar" style="margin-bottom:0">
+    <div class="search-input-wrap">
+      <i class="fas fa-search"></i>
+      <input class="form-control" type="text" name="search" value="{{ search }}" placeholder="Search student…"/>
+    </div>
+    <select class="form-control" name="semester" style="min-width:160px" id="semSelect">
+      <option value="">Select Semester</option>
+      {% for val,label in semesters %}<option value="{{ val }}" {% if val == selected_sem %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Filter</button>
+    <a href="{% url 'upload_scores' %}" class="btn btn-secondary">Reset</a>
+  </form>
+</div>
+
+{% if selected_sem and students %}
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Semester {{ selected_sem }} – {{ students|length }} Student(s)</span>
+    <span style="font-size:13px;color:#64748b">Fill scores as percentage (0–100)</span>
+  </div>
+  <form method="POST">
+    {% csrf_token %}
+    <input type="hidden" name="semester" value="{{ selected_sem }}"/>
+    <div class="table-wrap">
+      <table class="score-table">
+        <thead>
+          <tr>
+            <th><input type="checkbox" id="checkAll" onchange="toggleAll(this)"/></th>
+            <th>Student</th><th>ID</th>
+            <th>Prev Exam %</th><th>Internal Test %</th>
+            <th>Assignment %</th><th>Quiz %</th>
+            <th>Attendance %</th><th>Participation %</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in students %}
+          {% with sc=existing_scores|dictsortreversed:'id' %}
+          {% if s.id in existing_scores %}
+            {% with ex=existing_scores|get_item:s.id %}  
+            {# handled below #}
+            {% endwith %}
+          {% endif %}
+          {% endwith %}
+          <tr class="{% if s.id in existing_scores %}row-existing{% endif %}">
+            <td><input type="checkbox" name="student_ids" value="{{ s.id }}" class="row-check" checked/></td>
+            <td style="font-weight:600">
+              {{ s.get_full_name }}
+              {% if s.id in existing_scores %}<span class="badge-existing"><i class="fas fa-check-circle"></i> Uploaded</span>{% endif %}
+            </td>
+            <td><code style="background:#f1f5f9;padding:2px 8px;border-radius:5px;font-size:11px">{{ s.student_id }}</code></td>
+            {% if s.id in existing_scores %}
+              {% with ex=existing_scores|get_item:s.id %}
+              <td><input type="number" name="prev_{{ s.id }}"         min="0" max="100" step="0.1" value="{{ ex.previous_exam_marks }}"/></td>
+              <td><input type="number" name="internal_{{ s.id }}"     min="0" max="100" step="0.1" value="{{ ex.internal_test_marks }}"/></td>
+              <td><input type="number" name="assignment_{{ s.id }}"   min="0" max="100" step="0.1" value="{{ ex.assignment_score }}"/></td>
+              <td><input type="number" name="quiz_{{ s.id }}"         min="0" max="100" step="0.1" value="{{ ex.quiz_score }}"/></td>
+              <td><input type="number" name="attendance_{{ s.id }}"   min="0" max="100" step="0.1" value="{{ ex.attendance_percentage }}"/></td>
+              <td><input type="number" name="participation_{{ s.id }}" min="0" max="100" step="0.1" value="{{ ex.class_participation }}"/></td>
+              {% endwith %}
+            {% else %}
+              <td><input type="number" name="prev_{{ s.id }}"         min="0" max="100" step="0.1" placeholder="0"/></td>
+              <td><input type="number" name="internal_{{ s.id }}"     min="0" max="100" step="0.1" placeholder="0"/></td>
+              <td><input type="number" name="assignment_{{ s.id }}"   min="0" max="100" step="0.1" placeholder="0"/></td>
+              <td><input type="number" name="quiz_{{ s.id }}"         min="0" max="100" step="0.1" placeholder="0"/></td>
+              <td><input type="number" name="attendance_{{ s.id }}"   min="0" max="100" step="0.1" placeholder="0"/></td>
+              <td><input type="number" name="participation_{{ s.id }}" min="0" max="100" step="0.1" placeholder="0"/></td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div style="padding:20px 0 4px;display:flex;gap:12px;align-items:center">
+      <button type="submit" class="btn btn-primary"><i class="fas fa-upload"></i> Upload Scores</button>
+      <span style="font-size:13px;color:#64748b">Only checked students will be saved</span>
+    </div>
+  </form>
+</div>
+
+{% elif selected_sem and not students %}
+<div class="card" style="text-align:center;padding:48px">
+  <i class="fas fa-users" style="font-size:48px;color:#cbd5e1;margin-bottom:16px"></i>
+  <p style="color:#94a3b8">No students found for the selected filters.</p>
+</div>
+{% else %}
+<div class="card" style="text-align:center;padding:48px">
+  <i class="fas fa-hand-point-up" style="font-size:48px;color:#cbd5e1;margin-bottom:16px"></i>
+  <p style="color:#94a3b8;font-size:15px">Select a semester above to load student list.</p>
+</div>
+{% endif %}
+
+<script>
+function toggleAll(cb){
+  document.querySelectorAll('.row-check').forEach(c=>c.checked=cb.checked);
+}
+</script>
+<!-- CSV Import Section -->
+<div class="card" style="margin-top:24px;border-left:4px solid #6C63FF">
+  <div class="card-header">
+    <span class="card-title"><i class="fas fa-file-csv" style="color:#6C63FF"></i> Bulk Import Scores via CSV</span>
+    <a href="{% url 'sample_scores_csv' %}" class="btn btn-secondary btn-sm">
+      <i class="fas fa-download"></i> Download Sample CSV
+    </a>
+  </div>
+
+  <p style="color:#64748b;font-size:13px;margin-bottom:16px">
+    Upload a CSV to bulk-upload scores for your department students. Existing scores will be overwritten. Students not in your department are skipped.
+  </p>
+
+  <div style="background:#f8fafc;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#475569">
+    <strong>Required columns:</strong> student_id, semester, previous_exam_marks, internal_test_marks, assignment_score, quiz_score, attendance_percentage, class_participation
+  </div>
+
+  <form method="POST" action="{% url 'import_scores_csv' %}" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <input type="file" name="csv_file" accept=".csv" class="form-control" style="max-width:320px" required/>
+      <button type="submit" class="btn btn-primary">
+        <i class="fas fa-upload"></i> Import Scores
+      </button>
+    </div>
+  </form>
+</div>
+
+{% endblock %}

@@ -1,0 +1,252 @@
+{% extends 'faculty/base_faculty.html' %}
+{% block title %}Faculty Dashboard – EduTrack{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block extra_style %}
+<style>
+.learner-tabs { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
+.tab-btn { padding:8px 20px; border-radius:20px; border:2px solid #e2e8f0; background:#fff; font-size:13px; font-weight:600; cursor:pointer; transition:all .2s; color:#64748b; }
+.tab-btn.active-fast    { background:#d1fae5; border-color:#10b981; color:#065f46; }
+.tab-btn.active-avg     { background:#fef3c7; border-color:#f59e0b; color:#92400e; }
+.tab-btn.active-slow    { background:#fee2e2; border-color:#ef4444; color:#991b1b; }
+.tab-btn:not([class*="active"]):hover { background:#f8fafc; }
+.learner-section { display:none; }
+.learner-section.active { display:block; }
+.trend-badge { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:20px; font-size:11px; font-weight:600; }
+.trend-improving { background:#d1fae5; color:#065f46; }
+.trend-declining { background:#fee2e2; color:#991b1b; }
+.trend-stable    { background:#f1f5f9; color:#475569; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div><h1>Welcome, {{ faculty.first_name }}! 👋</h1><p>{{ faculty.department }} Department Overview</p></div>
+</div>
+
+<!-- Stat Cards -->
+<div class="stat-grid">
+  <div class="stat-card">
+    <div class="stat-icon purple"><i class="fas fa-building"></i></div>
+    <div><div class="stat-label">My Department</div><div class="stat-value" style="font-size:20px">{{ faculty.department }}</div></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon cyan"><i class="fas fa-user-graduate"></i></div>
+    <div><div class="stat-label">Students in Dept</div><div class="stat-value">{{ total_dept_students }}</div></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon green"><i class="fas fa-rocket"></i></div>
+    <div><div class="stat-label">Fast Learners</div><div class="stat-value">{{ fast_learners|length }}</div></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon amber"><i class="fas fa-chart-line"></i></div>
+    <div><div class="stat-label">Average Learners</div><div class="stat-value">{{ average_learners|length }}</div></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon red"><i class="fas fa-hourglass-half"></i></div>
+    <div><div class="stat-label">Slow Learners</div><div class="stat-value">{{ slow_learners|length }}</div></div>
+  </div>
+</div>
+
+<!-- Charts Row -->
+<div class="charts-grid">
+  <div class="card">
+    <div class="card-header"><span class="card-title"><i class="fas fa-chart-pie" style="color:#6C63FF"></i> Students by Semester</span></div>
+    <canvas id="semChart" height="220"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title"><i class="fas fa-chart-bar" style="color:#10b981"></i> Predicted Category Distribution</span></div>
+    <canvas id="predChart" height="220"></canvas>
+  </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="card" style="margin-bottom:24px">
+  <div class="card-header"><span class="card-title">Quick Actions</span></div>
+  <div class="quick-actions" style="grid-template-columns:1fr 1fr">
+    <a href="{% url 'upload_scores' %}" class="quick-action"><i class="fas fa-upload" style="color:#6C63FF"></i><span>Upload Scores</span></a>
+    <a href="{% url 'faculty_results' %}" class="quick-action"><i class="fas fa-clipboard-list" style="color:#10b981"></i><span>View Results</span></a>
+  </div>
+</div>
+
+<!-- Prediction Lists -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title"><i class="fas fa-brain" style="color:#6C63FF"></i> ML Prediction Overview</span>
+    <span style="font-size:12px;color:#94a3b8">Based on latest uploaded semester per student</span>
+  </div>
+
+  <!-- Tabs -->
+  <div class="learner-tabs" style="padding:0 0 8px 0">
+    <button class="tab-btn active-fast" onclick="showTab('fast', this)">
+      <i class="fas fa-rocket"></i> Fast Learners ({{ fast_learners|length }})
+    </button>
+    <button class="tab-btn" onclick="showTab('avg', this)">
+      <i class="fas fa-chart-line"></i> Average Learners ({{ average_learners|length }})
+    </button>
+    <button class="tab-btn" onclick="showTab('slow', this)">
+      <i class="fas fa-hourglass-half"></i> Slow Learners ({{ slow_learners|length }})
+    </button>
+  </div>
+
+  <!-- Fast Learners -->
+  <div class="learner-section active" id="tab-fast">
+    {% if fast_learners %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Student</th><th>ID</th><th>Sem</th><th>Predicting For</th><th>Confidence</th><th>Trend</th><th>Detail</th></tr>
+        </thead>
+        <tbody>
+          {% for entry in fast_learners %}
+          <tr>
+            <td style="font-weight:600;color:#1e293b">{{ entry.student.get_full_name }}</td>
+            <td><code style="background:#f1f5f9;padding:2px 8px;border-radius:5px;font-size:11px">{{ entry.student.student_id }}</code></td>
+            <td><span class="badge badge-sem">Sem {{ entry.based_on_sem }}</span></td>
+            <td><span class="badge" style="background:#d1fae5;color:#065f46">Sem {{ entry.predicting_for_sem }}</span></td>
+            <td><strong style="color:#10b981">{{ entry.confidence }}%</strong></td>
+            <td>
+              <span class="trend-badge trend-{{ entry.trend }}">
+                {% if entry.trend == 'improving' %}<i class="fas fa-arrow-trend-up"></i> Improving
+                {% elif entry.trend == 'declining' %}<i class="fas fa-arrow-trend-down"></i> Declining
+                {% else %}<i class="fas fa-minus"></i> Stable{% endif %}
+              </span>
+            </td>
+            <td><a href="{% url 'faculty_student_detail' entry.student.id %}" class="btn btn-primary btn-sm"><i class="fas fa-eye"></i></a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:32px;color:#94a3b8">
+      <i class="fas fa-rocket" style="font-size:36px;color:#e2e8f0;margin-bottom:12px;display:block"></i>
+      No fast learners predicted yet.
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Average Learners -->
+  <div class="learner-section" id="tab-avg">
+    {% if average_learners %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Student</th><th>ID</th><th>Sem</th><th>Predicting For</th><th>Confidence</th><th>Trend</th><th>Detail</th></tr>
+        </thead>
+        <tbody>
+          {% for entry in average_learners %}
+          <tr>
+            <td style="font-weight:600;color:#1e293b">{{ entry.student.get_full_name }}</td>
+            <td><code style="background:#f1f5f9;padding:2px 8px;border-radius:5px;font-size:11px">{{ entry.student.student_id }}</code></td>
+            <td><span class="badge badge-sem">Sem {{ entry.based_on_sem }}</span></td>
+            <td><span class="badge" style="background:#fef3c7;color:#92400e">Sem {{ entry.predicting_for_sem }}</span></td>
+            <td><strong style="color:#f59e0b">{{ entry.confidence }}%</strong></td>
+            <td>
+              <span class="trend-badge trend-{{ entry.trend }}">
+                {% if entry.trend == 'improving' %}<i class="fas fa-arrow-trend-up"></i> Improving
+                {% elif entry.trend == 'declining' %}<i class="fas fa-arrow-trend-down"></i> Declining
+                {% else %}<i class="fas fa-minus"></i> Stable{% endif %}
+              </span>
+            </td>
+            <td><a href="{% url 'faculty_student_detail' entry.student.id %}" class="btn btn-primary btn-sm"><i class="fas fa-eye"></i></a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:32px;color:#94a3b8">
+      <i class="fas fa-chart-line" style="font-size:36px;color:#e2e8f0;margin-bottom:12px;display:block"></i>
+      No average learners predicted yet.
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Slow Learners -->
+  <div class="learner-section" id="tab-slow">
+    {% if slow_learners %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Student</th><th>ID</th><th>Sem</th><th>Predicting For</th><th>Confidence</th><th>Trend</th><th>Detail</th></tr>
+        </thead>
+        <tbody>
+          {% for entry in slow_learners %}
+          <tr>
+            <td style="font-weight:600;color:#1e293b">{{ entry.student.get_full_name }}</td>
+            <td><code style="background:#f1f5f9;padding:2px 8px;border-radius:5px;font-size:11px">{{ entry.student.student_id }}</code></td>
+            <td><span class="badge badge-sem">Sem {{ entry.based_on_sem }}</span></td>
+            <td><span class="badge" style="background:#fee2e2;color:#991b1b">Sem {{ entry.predicting_for_sem }}</span></td>
+            <td><strong style="color:#ef4444">{{ entry.confidence }}%</strong></td>
+            <td>
+              <span class="trend-badge trend-{{ entry.trend }}">
+                {% if entry.trend == 'improving' %}<i class="fas fa-arrow-trend-up"></i> Improving
+                {% elif entry.trend == 'declining' %}<i class="fas fa-arrow-trend-down"></i> Declining
+                {% else %}<i class="fas fa-minus"></i> Stable{% endif %}
+              </span>
+            </td>
+            <td><a href="{% url 'faculty_student_detail' entry.student.id %}" class="btn btn-primary btn-sm"><i class="fas fa-eye"></i></a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:32px;color:#94a3b8">
+      <i class="fas fa-hourglass-half" style="font-size:36px;color:#e2e8f0;margin-bottom:12px;display:block"></i>
+      No slow learners predicted yet.
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<script>
+// Semester doughnut chart
+const semLabels = {{ sem_labels|safe }};
+const semCounts = {{ sem_counts|safe }};
+const colors = ['#6C63FF','#06b6d4','#10b981','#f59e0b','#ef4444','#a78bfa'];
+new Chart(document.getElementById('semChart'), {
+  type: 'doughnut',
+  data: { labels: semLabels, datasets:[{ data:semCounts, backgroundColor:colors, borderWidth:2, borderColor:'#fff' }] },
+  options: { responsive:true, plugins:{ legend:{ position:'bottom' } }, cutout:'60%' }
+});
+
+// Prediction bar chart
+const predCounts = {{ pred_counts|safe }};
+new Chart(document.getElementById('predChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Fast Learner', 'Average Learner', 'Slow Learner'],
+    datasets:[{
+      label: 'Students',
+      data: [predCounts['Fast Learner'], predCounts['Average Learner'], predCounts['Slow Learner']],
+      backgroundColor: ['rgba(16,185,129,.2)', 'rgba(245,158,11,.2)', 'rgba(239,68,68,.2)'],
+      borderColor:     ['#10b981', '#f59e0b', '#ef4444'],
+      borderWidth: 2,
+      borderRadius: 8,
+    }]
+  },
+  options: {
+    responsive:true,
+    plugins:{ legend:{ display:false } },
+    scales:{
+      y:{ beginAtZero:true, grid:{ color:'#f1f5f9' } },
+      x:{ grid:{ display:false } }
+    }
+  }
+});
+
+// Tab switching
+function showTab(tab, btn) {
+  document.querySelectorAll('.learner-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.remove('active-fast', 'active-avg', 'active-slow');
+  });
+  document.getElementById('tab-' + tab).classList.add('active');
+  const cls = tab === 'fast' ? 'active-fast' : tab === 'avg' ? 'active-avg' : 'active-slow';
+  btn.classList.add(cls);
+}
+</script>
+{% endblock %}

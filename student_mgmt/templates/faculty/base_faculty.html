@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block role_label %}Faculty Portal{% endblock %}
+{% block sidebar_nav %}
+<div class="nav-section">
+  <div class="nav-section-title">Overview</div>
+  <a href="{% url 'faculty_dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'faculty_dashboard' %}active{% endif %}">
+    <i class="fas fa-th-large"></i> Dashboard
+  </a>
+</div>
+<div class="nav-section">
+  <div class="nav-section-title">Academics</div>
+  <a href="{% url 'upload_scores' %}" class="nav-item {% if request.resolver_match.url_name == 'upload_scores' %}active{% endif %}">
+    <i class="fas fa-upload"></i> Upload Scores
+  </a>
+  <a href="{% url 'faculty_results' %}" class="nav-item {% if request.resolver_match.url_name == 'faculty_results' or request.resolver_match.url_name == 'faculty_student_detail' %}active{% endif %}">
+    <i class="fas fa-clipboard-list"></i> View Results
+  </a>
+</div>
+{% endblock %}

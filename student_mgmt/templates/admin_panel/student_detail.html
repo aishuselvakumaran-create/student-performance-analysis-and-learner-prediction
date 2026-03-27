@@ -1,0 +1,107 @@
+{% extends 'admin_panel/base_admin.html' %}
+{% block title %}{{ student.get_full_name }} – EduTrack{% endblock %}
+{% block page_title %}Student Detail{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>{{ student.get_full_name }}</h1><p>{{ student.student_id }} · {{ student.department }} · Semester {{ student.semester }}</p></div>
+  <div style="display:flex;gap:10px">
+    <a href="{% url 'edit_student' student.id %}" class="btn btn-warning"><i class="fas fa-edit"></i> Edit</a>
+    <a href="{% url 'view_students' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back</a>
+  </div>
+</div>
+
+<!-- Stats Row -->
+<div class="stat-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
+  <div class="stat-card">
+    <div class="stat-icon purple"><i class="fas fa-percentage"></i></div>
+    <div><div class="stat-label">Overall %</div><div class="stat-value">{{ overall }}%</div></div>
+  </div>
+  
+  <div class="stat-card">
+    <div class="stat-icon cyan"><i class="fas fa-book-open"></i></div>
+    <div><div class="stat-label">Semesters Recorded</div><div class="stat-value">{{ scores|length }}</div></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon amber"><i class="fas fa-envelope"></i></div>
+    <div><div class="stat-label">Email</div><div class="stat-value" style="font-size:13px;word-break:break-all">{{ student.email }}</div></div>
+  </div>
+</div>
+
+<!-- Charts -->
+{% if scores %}
+<div class="charts-grid">
+  <div class="card" style="grid-column:1/-1">
+    <div class="card-header"><span class="card-title"><i class="fas fa-chart-line" style="color:#6C63FF"></i> Semester-wise Performance</span></div>
+    <canvas id="perfChart" height="100"></canvas>
+  </div>
+</div>
+
+<!-- Semester Marks Table -->
+<div class="card" style="margin-top:20px">
+  <div class="card-header"><span class="card-title">Detailed Mark Sheet</span></div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Semester</th><th>Prev Exam</th><th>Internal Test</th>
+          <th>Assignment</th><th>Quiz</th><th>Attendance</th><th>Participation</th><th>Average</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in scores %}
+        <tr>
+          <td><span class="badge badge-sem">Sem {{ s.semester }}</span></td>
+          <td>{{ s.previous_exam_marks }}%</td>
+          <td>{{ s.internal_test_marks }}%</td>
+          <td>{{ s.assignment_score }}%</td>
+          <td>{{ s.quiz_score }}%</td>
+          <td>{{ s.attendance_percentage }}%</td>
+          <td>{{ s.class_participation }}%</td>
+          <td><strong>{{ s.get_average }}%</strong></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="card" style="text-align:center;padding:48px;margin-top:20px">
+  <i class="fas fa-chart-bar" style="font-size:48px;color:#cbd5e1;margin-bottom:16px"></i>
+  <p style="color:#94a3b8;font-size:15px">No scores uploaded yet for this student.</p>
+</div>
+{% endif %}
+
+<!-- Student Info -->
+<div class="card" style="margin-top:20px">
+  <div class="card-header"><span class="card-title">Personal Information</span></div>
+  <div class="form-grid">
+    <div><div style="font-size:12px;color:#94a3b8;margin-bottom:4px">Phone</div><div>{{ student.phone_number|default:"—" }}</div></div>
+    <div><div style="font-size:12px;color:#94a3b8;margin-bottom:4px">Date of Birth</div><div>{{ student.dob|default:"—" }}</div></div>
+    <div><div style="font-size:12px;color:#94a3b8;margin-bottom:4px">Address</div><div>{{ student.address|default:"—" }}</div></div>
+    <div><div style="font-size:12px;color:#94a3b8;margin-bottom:4px">Joined</div><div>{{ student.created_at|date:"d M Y" }}</div></div>
+  </div>
+</div>
+
+<script>
+const chartData = {{ chart_data|safe }};
+new Chart(document.getElementById('perfChart'), {
+  type: 'line',
+  data: {
+    labels: chartData.labels,
+    datasets: [
+      { label:'Previous Exam', data:chartData.previous_exam, borderColor:'#6C63FF', backgroundColor:'rgba(108,99,255,.08)', tension:.4, fill:true, pointRadius:5 },
+      { label:'Internal Test', data:chartData.internal_test, borderColor:'#06b6d4', backgroundColor:'rgba(6,182,212,.08)', tension:.4, fill:false, pointRadius:5 },
+      { label:'Assignment', data:chartData.assignment, borderColor:'#10b981', backgroundColor:'rgba(16,185,129,.08)', tension:.4, fill:false, pointRadius:5 },
+      { label:'Quiz', data:chartData.quiz, borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,.08)', tension:.4, fill:false, pointRadius:5 },
+      { label:'Attendance', data:chartData.attendance, borderColor:'#ef4444', backgroundColor:'rgba(239,68,68,.08)', tension:.4, fill:false, pointRadius:5 },
+      { label:'Participation', data:chartData.participation, borderColor:'#a78bfa', backgroundColor:'rgba(167,139,250,.08)', tension:.4, fill:false, pointRadius:5 },
+    ]
+  },
+  options: {
+    responsive:true,
+    plugins:{ legend:{ position:'top' } },
+    scales:{ y:{ min:0, max:100, grid:{ color:'#f1f5f9' } }, x:{ grid:{ display:false } } }
+  }
+});
+</script>
+{% endblock %}

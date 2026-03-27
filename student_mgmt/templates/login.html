@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>EduTrack – Login</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 40%, #06b6d4 100%);
+    display:flex; align-items:center; justify-content:center;
+    position:relative; overflow:hidden;
+  }
+
+  /* Decorative blobs */
+  body::before {
+    content:''; position:absolute; width:500px; height:500px;
+    background:rgba(255,255,255,.06); border-radius:50%;
+    top:-150px; left:-150px; pointer-events:none;
+  }
+  body::after {
+    content:''; position:absolute; width:400px; height:400px;
+    background:rgba(255,255,255,.06); border-radius:50%;
+    bottom:-120px; right:-120px; pointer-events:none;
+  }
+
+  .blob {
+    position:absolute; border-radius:50%; pointer-events:none;
+    background:rgba(255,255,255,.05);
+  }
+  .blob1 { width:300px; height:300px; top:10%; right:10%; animation:float 6s ease-in-out infinite; }
+  .blob2 { width:200px; height:200px; bottom:20%; left:5%; animation:float 8s ease-in-out infinite reverse; }
+  @keyframes float {
+    0%,100% { transform:translateY(0) rotate(0deg); }
+    50% { transform:translateY(-20px) rotate(5deg); }
+  }
+
+  .login-wrapper {
+    display:flex; width:920px; max-width:95vw;
+    background:#fff; border-radius:24px;
+    box-shadow:0 32px 80px rgba(0,0,0,.25);
+    overflow:hidden; z-index:10;
+  }
+
+  /* Left panel */
+  .login-left {
+    flex:1; background:linear-gradient(160deg, #4f46e5 0%, #7c3aed 50%, #06b6d4 100%);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:48px 36px; color:#fff;
+  }
+  .login-left .logo-wrap {
+    width:80px; height:80px; background:rgba(255,255,255,.2);
+    border-radius:22px; display:flex; align-items:center; justify-content:center;
+    font-size:36px; margin-bottom:24px; backdrop-filter:blur(8px);
+  }
+  .login-left h1 { font-size:30px; font-weight:800; margin-bottom:8px; text-align:center; }
+  .login-left p { font-size:15px; opacity:.85; text-align:center; line-height:1.6; max-width:260px; }
+  .feature-list { margin-top:36px; display:flex; flex-direction:column; gap:14px; width:100%; }
+  .feature-item { display:flex; align-items:center; gap:12px; background:rgba(255,255,255,.12); padding:12px 16px; border-radius:12px; backdrop-filter:blur(4px); }
+  .feature-item i { font-size:18px; opacity:.9; }
+  .feature-item span { font-size:13px; font-weight:500; }
+
+  /* Right panel */
+  .login-right { flex:1; padding:48px 44px; display:flex; flex-direction:column; justify-content:center; }
+  .login-right h2 { font-size:24px; font-weight:800; color:#1e293b; margin-bottom:6px; }
+  .login-right .subtitle { font-size:14px; color:#64748b; margin-bottom:32px; }
+
+  .form-group { margin-bottom:20px; }
+  .form-group label { display:block; font-size:13px; font-weight:600; color:#475569; margin-bottom:7px; }
+  .input-wrap { position:relative; }
+  .input-wrap i { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:15px; transition:color .2s; }
+  .input-wrap input {
+    width:100%; padding:12px 14px 12px 42px;
+    border:2px solid #e2e8f0; border-radius:11px;
+    font-family:inherit; font-size:14px; color:#1e293b;
+    transition:border-color .2s, box-shadow .2s; background:#f8fafc;
+  }
+  .input-wrap input:focus { outline:none; border-color:#6C63FF; background:#fff; box-shadow:0 0 0 4px rgba(108,99,255,.1); }
+  .input-wrap input:focus + i, .input-wrap:focus-within i { color:#6C63FF; }
+  .toggle-password { position:absolute; right:14px; top:50%; transform:translateY(-50%); cursor:pointer; color:#94a3b8; font-size:15px; background:none; border:none; padding:0; }
+  .toggle-password:hover { color:#6C63FF; }
+
+  .btn-login {
+    width:100%; padding:13px; background:linear-gradient(135deg,#6C63FF,#4f46e5);
+    color:#fff; border:none; border-radius:11px; font-family:inherit;
+    font-size:15px; font-weight:700; cursor:pointer; transition:all .2s;
+    margin-top:8px; display:flex; align-items:center; justify-content:center; gap:10px;
+    box-shadow:0 8px 24px rgba(108,99,255,.3);
+  }
+  .btn-login:hover { transform:translateY(-2px); box-shadow:0 12px 30px rgba(108,99,255,.4); }
+  .btn-login:active { transform:translateY(0); }
+
+  .alert-error {
+    background:#fee2e2; color:#991b1b; border:1px solid #fecaca;
+    padding:11px 14px; border-radius:10px; font-size:13px; font-weight:500;
+    display:flex; align-items:center; gap:8px; margin-bottom:20px;
+  }
+
+  .login-footer { margin-top:28px; text-align:center; font-size:12px; color:#94a3b8; }
+
+  .role-hint { margin-top:24px; background:#f8fafc; border-radius:12px; padding:14px 16px; border:1px solid #e2e8f0; }
+  .role-hint p { font-size:11px; color:#64748b; margin-bottom:6px; font-weight:600; text-transform:uppercase; letter-spacing:.8px; }
+  .role-hint code { font-size:12px; background:#ede9fe; color:#5b21b6; padding:2px 8px; border-radius:5px; font-family:monospace; }
+
+  @media(max-width:680px) {
+    .login-left { display:none; }
+    .login-right { padding:36px 28px; }
+  }
+</style>
+</head>
+<body>
+<div class="blob blob1"></div>
+<div class="blob blob2"></div>
+
+<div class="login-wrapper">
+  <!-- Left -->
+  <div class="login-left">
+    <div class="logo-wrap">🎓</div>
+    <h1>EduTrack</h1>
+    <p>Smart Student Performance Analytics & Management System</p>
+    <div class="feature-list">
+      <div class="feature-item"><i class="fas fa-chart-line"></i><span>Performance Analytics</span></div>
+      <div class="feature-item"><i class="fas fa-users-cog"></i><span>Admin & Faculty Portal</span></div>
+      <div class="feature-item"><i class="fas fa-bell"></i><span>Real-time Notifications</span></div>
+      <div class="feature-item"><i class="fas fa-brain"></i><span>Learner Category Prediction</span></div>
+    </div>
+  </div>
+
+  <!-- Right -->
+  <div class="login-right">
+    <h2>Welcome Back 👋</h2>
+    <p class="subtitle">Sign in to your account to continue</p>
+
+    {% if messages %}
+      {% for msg in messages %}
+        <div class="alert-error"><i class="fas fa-exclamation-circle"></i> {{ msg }}</div>
+      {% endfor %}
+    {% endif %}
+
+    <form method="POST" action="{% url 'login' %}">
+      {% csrf_token %}
+      <div class="form-group">
+        <label>Username</label>
+        <div class="input-wrap">
+          <i class="fas fa-user"></i>
+          <input type="text" name="username" placeholder="Enter your username" required autocomplete="username"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <div class="input-wrap">
+          <i class="fas fa-lock"></i>
+          <input type="password" name="password" id="password" placeholder="Enter your password" required autocomplete="current-password"/>
+          <button type="button" class="toggle-password" onclick="togglePwd()">
+            <i class="fas fa-eye" id="eye-icon"></i>
+          </button>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-login">
+        <i class="fas fa-sign-in-alt"></i> Sign In
+      </button>
+    </form>
+
+    <div class="role-hint">
+      <p>Default Credentials</p>
+      Admin: <code>admin</code> / <code>admin123</code> &nbsp;·&nbsp;
+      Faculty & Student: set by Admin
+    </div>
+
+    <div class="login-footer">EduTrack © 2024 · Secure Portal</div>
+  </div>
+</div>
+
+<script>
+  function togglePwd() {
+    const input = document.getElementById('password');
+    const icon = document.getElementById('eye-icon');
+    if (input.type === 'password') {
+      input.type = 'text'; icon.classList.replace('fa-eye','fa-eye-slash');
+    } else {
+      input.type = 'password'; icon.classList.replace('fa-eye-slash','fa-eye');
+    }
+  }
+</script>
+</body>
+</html>

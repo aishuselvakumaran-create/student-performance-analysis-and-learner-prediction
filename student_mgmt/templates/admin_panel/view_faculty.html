@@ -1,0 +1,48 @@
+{% extends 'admin_panel/base_admin.html' %}
+{% block title %}View Faculty – EduTrack{% endblock %}
+{% block page_title %}Faculty{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>All Faculty</h1><p>{{ faculty_list|length }} record(s) found</p></div>
+  <a href="{% url 'add_faculty' %}" class="btn btn-primary"><i class="fas fa-plus"></i> Add Faculty</a>
+</div>
+<div class="card">
+  <form method="GET" class="search-bar">
+    <div class="search-input-wrap">
+      <i class="fas fa-search"></i>
+      <input class="form-control" type="text" name="search" value="{{ search }}" placeholder="Search name, ID, email…"/>
+    </div>
+    <select class="form-control" name="department" style="min-width:160px">
+      <option value="">All Departments</option>
+      {% for val,label in departments %}<option value="{{ val }}" {% if val == selected_dept %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Filter</button>
+    <a href="{% url 'view_faculty' %}" class="btn btn-secondary">Reset</a>
+  </form>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>#</th><th>Name</th><th>Faculty ID</th><th>Email</th><th>Department</th><th>Phone</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for f in faculty_list %}
+        <tr>
+          <td style="color:#94a3b8">{{ forloop.counter }}</td>
+          <td style="font-weight:600">{{ f.get_full_name }}</td>
+          <td><code style="background:#f1f5f9;padding:2px 8px;border-radius:5px;font-size:12px">{{ f.faculty_id }}</code></td>
+          <td style="color:#64748b">{{ f.email }}</td>
+          <td><span class="badge badge-dept">{{ f.department }}</span></td>
+          <td style="color:#64748b">{{ f.phone_number|default:"—" }}</td>
+          <td>
+            <div style="display:flex;gap:6px">
+              <a href="{% url 'edit_faculty' f.id %}" class="btn btn-warning btn-sm btn-icon" title="Edit"><i class="fas fa-edit"></i></a>
+              <a href="{% url 'delete_faculty' f.id %}" class="btn btn-danger btn-sm btn-icon" title="Delete" onclick="return confirm('Delete this faculty member?')"><i class="fas fa-trash"></i></a>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" style="text-align:center;padding:40px;color:#94a3b8"><i class="fas fa-chalkboard-teacher" style="font-size:32px;margin-bottom:8px;display:block"></i>No faculty found</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

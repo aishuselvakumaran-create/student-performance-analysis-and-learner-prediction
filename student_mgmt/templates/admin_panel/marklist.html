@@ -1,0 +1,255 @@
+{% extends 'admin_panel/base_admin.html' %}
+{% block title %}Mark List – EduTrack{% endblock %}
+{% block page_title %}Mark Lists{% endblock %}
+
+{% block extra_style %}
+<style>
+/* Modal */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:1000; align-items:center; justify-content:center; }
+.modal-overlay.active { display:flex; }
+.modal-box { background:#fff; border-radius:16px; padding:32px; width:100%; max-width:460px; box-shadow:0 20px 60px rgba(0,0,0,.2); position:relative; animation:slideUp .25s ease; }
+@keyframes slideUp { from{transform:translateY(30px);opacity:0} to{transform:translateY(0);opacity:1} }
+.modal-title { font-size:18px; font-weight:700; color:#1e293b; margin-bottom:4px; }
+.modal-sub   { font-size:13px; color:#94a3b8; margin-bottom:20px; }
+.modal-close { position:absolute; top:16px; right:16px; background:none; border:none; font-size:20px; color:#94a3b8; cursor:pointer; }
+.modal-close:hover { color:#1e293b; }
+
+/* Trend badges */
+.trend-badge { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:20px; font-size:12px; font-weight:600; }
+.trend-improving { background:#d1fae5; color:#065f46; }
+.trend-declining { background:#fee2e2; color:#991b1b; }
+.trend-stable    { background:#f1f5f9; color:#475569; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div><h1>Student Mark Lists</h1><p>View and analyze all student marks</p></div>
+</div>
+
+<div class="card">
+  <form method="GET" class="search-bar">
+    <div class="search-input-wrap">
+      <i class="fas fa-search"></i>
+      <input class="form-control" type="text" name="search" value="{{ search }}" placeholder="Search name or student ID…"/>
+    </div>
+    <select class="form-control" name="department" style="min-width:160px">
+      <option value="">All Departments</option>
+      {% for val,label in departments %}<option value="{{ val }}" {% if val == selected_dept %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Filter</button>
+    <a href="{% url 'admin_marklist' %}" class="btn btn-secondary">Reset</a>
+  </form>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Student</th><th>ID</th><th>Dept</th><th>Sem</th>
+          <th>Overall %</th><th>Sems Uploaded</th><th>Detail</th><th>Predict</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in students %}
+        <tr>
+          <td><a href="{% url 'student_detail' s.id %}" style="color:#6C63FF;font-weight:600;text-decoration:none">{{ s.get_full_name }}</a></td>
+          <td><code style="background:#f1f5f9;padding:2px 8px;border-radius:5px;font-size:12px">{{ s.student_id }}</code></td>
+          <td><span class="badge badge-dept">{{ s.department }}</span></td>
+          <td><span class="badge badge-sem">Sem {{ s.semester }}</span></td>
+          <td><strong>{{ s.get_overall_percentage }}%</strong></td>
+          <td style="text-align:center">{{ s.scores.count }}</td>
+          <td><a href="{% url 'student_detail' s.id %}" class="btn btn-primary btn-sm"><i class="fas fa-chart-line"></i> View</a></td>
+          <td>
+            {% if s.scores.count > 0 %}
+            <button class="btn btn-secondary btn-sm"
+              onclick="openPredictModal({{ s.id }}, '{{ s.get_full_name }}', {{ s.scores.count }})">
+              <i class="fas fa-brain"></i> Predict
+            </button>
+            {% else %}
+            <span style="font-size:12px;color:#cbd5e1">No scores</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" style="text-align:center;padding:40px;color:#94a3b8">No students found</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Prediction Distribution Chart -->
+<div class="card" style="margin-top:24px">
+  <div class="card-header">
+    <span class="card-title"><i class="fas fa-chart-bar" style="color:#6C63FF"></i> Next Semester Category Distribution</span>
+    <button class="btn btn-secondary btn-sm" onclick="loadChart()"><i class="fas fa-sync"></i> Load Chart</button>
+  </div>
+  <div id="chartPlaceholder" style="text-align:center;padding:40px;color:#94a3b8">
+    <i class="fas fa-chart-bar" style="font-size:40px;color:#e2e8f0;margin-bottom:12px;display:block"></i>
+    Click "Load Chart" to see prediction distribution
+  </div>
+  <canvas id="predictionChart" height="80" style="display:none"></canvas>
+</div>
+
+<!-- Predict Modal -->
+<div class="modal-overlay" id="predictModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closePredictModal()">×</button>
+    <div class="modal-title"><i class="fas fa-brain" style="color:#6C63FF"></i> Predict Category</div>
+    <div class="modal-sub" id="predictModalSub"></div>
+
+    <div style="margin-bottom:20px">
+      <label style="font-size:13px;font-weight:600;color:#64748b;display:block;margin-bottom:6px">
+        Select Semester to Predict
+      </label>
+      <select id="predictSemSelect" class="form-control">
+        <option value="2">Semester 2 — uses Sem 1</option>
+        <option value="3">Semester 3 — uses Sem 1, 2</option>
+        <option value="4">Semester 4 — uses Sem 1, 2, 3</option>
+        <option value="5">Semester 5 — uses Sem 1, 2, 3, 4</option>
+        <option value="6">Semester 6 — uses Sem 1, 2, 3, 4, 5</option>
+      </select>
+    </div>
+
+    <button class="btn btn-primary" style="width:100%" onclick="runPrediction()">
+      <i class="fas fa-rocket"></i> Run Prediction
+    </button>
+
+    <div id="predictResult" style="margin-top:20px;display:none"></div>
+  </div>
+</div>
+
+<script>
+let currentStudentId = null;
+
+function openPredictModal(studentId, name, scoreCount) {
+  currentStudentId = studentId;
+  document.getElementById('predictModalSub').textContent = name;
+  document.getElementById('predictResult').style.display = 'none';
+  document.getElementById('predictResult').innerHTML = '';
+  document.getElementById('predictModal').classList.add('active');
+}
+
+function closePredictModal() {
+  document.getElementById('predictModal').classList.remove('active');
+}
+
+function runPrediction() {
+  const sem       = document.getElementById('predictSemSelect').value;
+  const resultBox = document.getElementById('predictResult');
+  resultBox.style.display = 'block';
+  resultBox.innerHTML = '<div style="text-align:center;padding:20px;color:#94a3b8"><i class="fas fa-spinner fa-spin"></i> Predicting…</div>';
+
+  fetch(`/predict/${currentStudentId}/?semester=${sem}`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) {
+        resultBox.innerHTML = `
+          <div style="background:#fee2e2;padding:14px;border-radius:10px;color:#991b1b">
+            <i class="fas fa-exclamation-circle"></i> ${data.error}
+          </div>`;
+        return;
+      }
+
+      const catColors = {
+        'Fast Learner':    { bg:'#d1fae5', color:'#065f46', icon:'fa-rocket' },
+        'Average Learner': { bg:'#fef3c7', color:'#92400e', icon:'fa-chart-line' },
+        'Slow Learner':    { bg:'#fee2e2', color:'#991b1b', icon:'fa-hourglass-half' },
+      };
+      const trendIcon  = { improving:'fa-arrow-trend-up', declining:'fa-arrow-trend-down', stable:'fa-minus' };
+      const trendClass = { improving:'trend-improving', declining:'trend-declining', stable:'trend-stable' };
+      const trendLabel = { improving:'Improving', declining:'Declining', stable:'Stable' };
+
+      const c1 = catColors[data.predicted_category] || catColors['Average Learner'];
+      const c2 = catColors[data.next_year_category]  || catColors['Average Learner'];
+
+      resultBox.innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:12px">
+
+          <div style="background:${c1.bg};border-radius:12px;padding:14px 16px">
+            <div style="font-size:11px;color:${c1.color};opacity:.75;margin-bottom:6px">
+              Based on Sem: ${data.based_on_sems.join(', ')} → Predicting Sem ${data.predicting_for_sem}
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <i class="fas ${c1.icon}" style="font-size:22px;color:${c1.color}"></i>
+              <div>
+                <div style="font-weight:700;font-size:17px;color:${c1.color}">${data.predicted_category}</div>
+                <div style="font-size:12px;color:${c1.color};opacity:.8">Confidence: ${data.confidence}%</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="background:${c2.bg};border-radius:12px;padding:14px 16px">
+            <div style="font-size:11px;color:${c2.color};opacity:.75;margin-bottom:6px">Next Year Prediction</div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <i class="fas ${c2.icon}" style="font-size:22px;color:${c2.color}"></i>
+              <div style="font-weight:700;font-size:17px;color:${c2.color}">${data.next_year_category}</div>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:12px;padding:8px 0">
+            <span class="trend-badge ${trendClass[data.trend]}">
+              <i class="fas ${trendIcon[data.trend]}"></i> ${trendLabel[data.trend]}
+            </span>
+            <span style="font-size:12px;color:#64748b">
+              Improvement score: <strong>${data.improvement > 0 ? '+' : ''}${data.improvement}</strong>
+            </span>
+          </div>
+
+        </div>`;
+    })
+    .catch(() => {
+      resultBox.innerHTML = '<div style="color:#ef4444">Something went wrong. Please try again.</div>';
+    });
+}
+
+// Bar Chart
+function loadChart() {
+  document.getElementById('chartPlaceholder').innerHTML =
+    '<i class="fas fa-spinner fa-spin" style="font-size:24px;color:#6C63FF"></i>';
+
+  fetch('/predict/chart-data/')
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById('chartPlaceholder').style.display = 'none';
+      const canvas = document.getElementById('predictionChart');
+      canvas.style.display = 'block';
+
+      if (window._predChart) window._predChart.destroy();
+      window._predChart = new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: ['Fast Learner', 'Average Learner', 'Slow Learner'],
+          datasets: [{
+            label: 'Number of Students',
+            data: [data['Fast Learner'], data['Average Learner'], data['Slow Learner']],
+            backgroundColor: ['rgba(16,185,129,.2)', 'rgba(245,158,11,.2)', 'rgba(239,68,68,.2)'],
+            borderColor:     ['#10b981', '#f59e0b', '#ef4444'],
+            borderWidth: 2,
+            borderRadius: 8,
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: false },
+            title:  { display: true, text: 'Predicted Next Semester Category Distribution', font: { size: 14 } }
+          },
+          scales: {
+            y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
+            x: { grid: { display: false } }
+          }
+        }
+      });
+    })
+    .catch(() => {
+      document.getElementById('chartPlaceholder').innerHTML =
+        '<span style="color:#ef4444">Failed to load chart. Try again.</span>';
+    });
+}
+
+document.getElementById('predictModal').addEventListener('click', function(e) {
+  if (e.target === this) closePredictModal();
+});
+</script>
+{% endblock %}

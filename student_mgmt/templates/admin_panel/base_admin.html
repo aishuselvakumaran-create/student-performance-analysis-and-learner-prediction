@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block role_label %}Admin Portal{% endblock %}
+{% block sidebar_nav %}
+<div class="nav-section">
+  <div class="nav-section-title">Overview</div>
+  <a href="{% url 'admin_dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'admin_dashboard' %}active{% endif %}">
+    <i class="fas fa-th-large"></i> Dashboard
+  </a>
+</div>
+<div class="nav-section">
+  <div class="nav-section-title">Students</div>
+  <a href="{% url 'add_student' %}" class="nav-item {% if request.resolver_match.url_name == 'add_student' %}active{% endif %}">
+    <i class="fas fa-user-plus"></i> Add Student
+  </a>
+  <a href="{% url 'view_students' %}" class="nav-item {% if request.resolver_match.url_name == 'view_students' or request.resolver_match.url_name == 'edit_student' %}active{% endif %}">
+    <i class="fas fa-users"></i> View Students
+  </a>
+</div>
+<div class="nav-section">
+  <div class="nav-section-title">Faculty</div>
+  <a href="{% url 'add_faculty' %}" class="nav-item {% if request.resolver_match.url_name == 'add_faculty' %}active{% endif %}">
+    <i class="fas fa-chalkboard-teacher"></i> Add Faculty
+  </a>
+  <a href="{% url 'view_faculty' %}" class="nav-item {% if request.resolver_match.url_name == 'view_faculty' or request.resolver_match.url_name == 'edit_faculty' %}active{% endif %}">
+    <i class="fas fa-id-badge"></i> View Faculty
+  </a>
+</div>
+<div class="nav-section">
+  <div class="nav-section-title">Academics</div>
+  <a href="{% url 'admin_marklist' %}" class="nav-item {% if request.resolver_match.url_name == 'admin_marklist' or request.resolver_match.url_name == 'student_detail' %}active{% endif %}">
+    <i class="fas fa-clipboard-list"></i> Mark Lists
+  </a>
+</div>
+{% endblock %}
